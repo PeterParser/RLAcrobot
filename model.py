@@ -73,7 +73,6 @@ class Model:
         variables = self.training_network.trainable_variables
         gradients = tape.gradient(loss, variables)
         self.optimizer.apply_gradients(zip(gradients, variables))
-        return loss
 
     def update_target(self):
         self.target_network.set_weights(self.training_network.get_weights())

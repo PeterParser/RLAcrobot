@@ -43,12 +43,11 @@ def start_training(is_prioritized, is_double):
     buffer = PrioritizedReplay(hyperparams['max_experiences']) if is_prioritized else UniformReplay(
         hyperparams['max_experiences'])
 
-    state = env.reset()
     agent = Model(hyperparams['network'], state_spec, action_spec, buffer, hyperparams['learning_rate'], is_prioritized,
                   is_double)
 
     time = 0
-    total_rewards = np.empty(1000)
+    total_rewards = np.empty(hyperparams['episodesf'])
     for episode in range(hyperparams['episodes']):
         episode_reward = 0
         epsilon = max(hyperparams['min_epsilon'], epsilon * hyperparams['decay'])
