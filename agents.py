@@ -58,10 +58,10 @@ class ActorCriticAgent:
                  learning_rate_critic):
         self.actor_network = tf.keras.models.Sequential()
         self.critic_network = tf.keras.models.Sequential()
+
         # Input layers
         self.actor_network.add(tf.keras.layers.InputLayer(input_shape=(state_spec,)))
         self.critic_network.add(tf.keras.layers.InputLayer(input_shape=(state_spec,)))
-        self.loss = tf.keras.losses.mean_squared_error
 
         # Hidden layers
         for hidden_layer in hidden_layers_actor:
@@ -72,8 +72,10 @@ class ActorCriticAgent:
         # Output layers
         self.actor_network.add(tf.keras.layers.Dense(action_spec, activation='softmax', dtype='float64'))
         self.critic_network.add(tf.keras.layers.Dense(1, activation='linear', dtype='float64'))
+
         self.optimizer_actor = tf.keras.optimizers.Adam(learning_rate_actor)
         self.optimizer_critic = tf.keras.optimizers.Adam(learning_rate_critic)
+        self.loss = tf.keras.losses.mean_squared_error
 
     def play_action(self, state):
         probabilities = self.actor_network(np.atleast_2d(state))
@@ -82,10 +84,10 @@ class ActorCriticAgent:
         return action
 
     def play_and_train(self, state, env, gamma):
-        # Batch size here is not used and is here for compatibility reasons
         with tf.GradientTape(persistent=True) as tape:
             probabilities = self.actor_network(np.atleast_2d(state))
-            # i need to normalize probability because numpy wants that the sum must be 1
+            # I need to normalize probability because numpy wants that the sum must be 1 and the softmax gives me
+            # 0.99999999
 
             # Stop recording needed because predict method doesn't work inside gradient tape
             # And for not taking the gradient of target in order to do a semigradient update

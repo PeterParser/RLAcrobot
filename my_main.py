@@ -32,9 +32,12 @@ def start_training_ac():
     log_name = 'final'
     log_dir = 'logs/acrobotAC/' + log_name
     log_writer = tf.summary.create_file_writer(log_dir)
+
+    # Init the AC agent
     agent = ActorCriticAgent(hyperparams['hidden_layer_actor'], hyperparams['hidden_layer_critic'], state_spec,
                              action_spec, hyperparams['learning_rate_actor'], hyperparams['learning_rate_critic'])
 
+    # Metric for the tensorboard
     total_rewards = np.empty(hyperparams['episodes'])
     for episode in range(hyperparams['episodes']):
         episode_reward = 0
@@ -105,25 +108,33 @@ def start_training_dqn(is_prioritized):
     env.close()
 
 
-def test_model(model):
+def test_model(model, is_ac):
     env = gym.make(hyperparams['environment'])
     state_spec = len(env.observation_space.sample())
     action_spec = env.action_space.n
     buffer = None
     is_prioritized = False
-    is_double = False
-    # Create the agent
-    agent = DQNAgent(hyperparams['network'], state_spec, action_spec, buffer, hyperparams['learning_rate'],
-                     is_prioritized,
-                     is_double)
-    # Load weights from file
-    agent.training_network.load_weights(model)
+    if is_ac:
+        agent = ActorCriticAgent(hyperparams['hidden_layer_actor'], hyperparams['hidden_layer_critic'], state_spec,
+                                 action_spec, hyperparams['learning_rate_actor'], hyperparams['learning_rate_critic'])
+        agent.actor_network.load_weights(model)
+
+    else:
+        agent = DQNAgent(hyperparams['network'], state_spec, action_spec, buffer, hyperparams['learning_rate'],
+                         is_prioritized)
+
+        agent.training_network.load_weights(model)
     obs = env.reset()
     env.render()
+    # Play 20 episodes
     for i in range(20):
         rewards = []
         while True:
-            action = agent.play_action(np.atleast_2d(obs)[0], 0.1)
+            if is_ac:
+                action = agent.play_action(obs)
+            else:
+                action = agent.play_action(obs, 0.1)
+
             obs, reward, done, _ = env.step(action)
             env.render()
             rewards.append(reward)
@@ -153,4 +164,4 @@ if __name__ == '__main__':
             start_training_dqn(args.per)
     elif args.mode == 'test':
         print('test')
-        test_model(args.model)
+        test_model(args.model, args.ac)
