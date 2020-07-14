@@ -36,7 +36,7 @@ class PrioritizedReplay:
         # Parameters initialised according to the paper values
         self.alpha = 0.6
         self.beta = 0.4
-        self.beta_increment = 0.01
+        self.beta_increment = 0.0005
         self.epsilon = epsilon
 
     def add(self, experience):
