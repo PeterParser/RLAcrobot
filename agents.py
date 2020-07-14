@@ -99,6 +99,7 @@ class ActorCriticAgent:
 
             predicted = self.critic_network(np.atleast_2d(state))
             critic_loss = self.loss(target, predicted)
+            # Need to use tf.math.log instead of np.log because the gradient tape cannot track np.log
             actor_loss = -tf.math.log(probabilities[0, action]) * (target - predicted)
 
         actor_gradient = tape.gradient(actor_loss, self.actor_network.trainable_weights)
