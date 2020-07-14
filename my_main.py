@@ -3,7 +3,7 @@ import tensorflow as tf
 import gym
 import numpy as np
 from ReplayBuffer import PrioritizedReplay, UniformReplay
-from model import Model
+from agents import DQNAgent, ActorCriticAgent
 
 hyperparams = {
     'gamma': 0.99,
@@ -21,39 +21,56 @@ hyperparams = {
 }
 
 
-def start_training(is_prioritized, is_double):
+def start_training_ac():
+    env = gym.make(hyperparams['environment'])
+    state_spec = len(env.observation_space.sample())
+    action_spec = env.action_space.n
+    log_name = 'final'
+    log_dir = 'logs/acrobotAC/' + log_name
+    log_writer = tf.summary.create_file_writer(log_dir)
+    agent = ActorCriticAgent(hyperparams['network'], state_spec, action_spec, hyperparams['learning_rate'])
+    total_rewards = np.empty(hyperparams['episodes'])
+    for episode in range(hyperparams['episodes']):
+        episode_reward = 0
+        done = False
+        state = env.reset()
+        while not done:
+            next_state, reward, done = agent.play_and_train(state, env, hyperparams['gamma'])
+            episode_reward += reward
+            state = next_state
+        total_rewards[episode] = episode_reward
+        avg_rewards = total_rewards[max(0, episode - 100):(episode + 1)].mean()
+        env.reset()
+        with log_writer.as_default():
+            tf.summary.scalar('episode reward', episode_reward, step=episode)
+            tf.summary.scalar('avg for 100 episodes', avg_rewards, step=episode)
+
+
+def start_training_dqn(is_prioritized):
     if is_prioritized:
         prio = "Prio"
     else:
         prio = ""
 
-    if is_double:
-        ddqn = "double"
-    else:
-        ddqn = "single"
-
     env = gym.make(hyperparams['environment'])
     state_spec = len(env.observation_space.sample())
     action_spec = env.action_space.n
-    log_name = 'final' + prio + ddqn
+    log_name = 'final' + prio
     log_dir = 'logs/acrobot/' + log_name
+
     log_writer = tf.summary.create_file_writer(log_dir)
 
     epsilon = hyperparams['epsilon']
     buffer = PrioritizedReplay(hyperparams['max_experiences']) if is_prioritized else UniformReplay(
         hyperparams['max_experiences'])
 
-    agent = Model(hyperparams['network'], state_spec, action_spec, buffer, hyperparams['learning_rate'], is_prioritized,
-                  is_double)
+    agent = DQNAgent(hyperparams['network'], state_spec, action_spec, buffer, hyperparams['learning_rate'],
+                     is_prioritized)
 
-    time = 0
-    total_rewards = np.empty(hyperparams['episodesf'])
+    total_rewards = np.empty(hyperparams['episodes'])
     for episode in range(hyperparams['episodes']):
         episode_reward = 0
         epsilon = max(hyperparams['min_epsilon'], epsilon * hyperparams['decay'])
-        # train loop
-
-        # if i don't have enough samples i will not call train
         done = False
         state = env.reset()
         while not done:
@@ -65,13 +82,9 @@ def start_training(is_prioritized, is_double):
             buffer.add((state, action, reward, next_state, done))
             state = next_state
 
+            # Only if is DQN i need to wait with actor critic i will procede, put a switch
             if len(buffer.experiences) > hyperparams['min_experiences']:
                 agent.train(hyperparams['gamma'], hyperparams['batch_size'])
-
-            time += 1
-            if time % hyperparams['copy_step'] == 0 and is_double:
-                agent.update_target()
-                time = 0
 
         total_rewards[episode] = episode_reward
         avg_rewards = total_rewards[max(0, episode - 100):(episode + 1)].mean()
@@ -95,8 +108,9 @@ def test_model(model):
     is_prioritized = False
     is_double = False
     # Create the network
-    agent = Model(hyperparams['network'], state_spec, action_spec, buffer, hyperparams['learning_rate'], is_prioritized,
-                  is_double)
+    agent = DQNAgent(hyperparams['network'], state_spec, action_spec, buffer, hyperparams['learning_rate'],
+                     is_prioritized,
+                     is_double)
     # Load weights from file
     agent.training_network.load_weights(model)
     obs = env.reset()
@@ -123,13 +137,15 @@ if __name__ == '__main__':
     parser.add_argument('--per', help="Use this if you want experience replay", action="store_true", dest='per',
                         default=False)
     parser.add_argument('--model', help="the model you want to test", type=str, dest='model')
-    parser.add_argument("--double", help="Use double DQN", action="store_true", dest='double')
+    parser.add_argument('--ac', help="Use actor critic", action="store_true", dest='ac')
     args = parser.parse_args()
     if args.mode == 'train':
         print('TRAIN')
         print("PER", args.per)
-        print("DOUBLE", args.double)
-        start_training(args.per, args.double)
+        if args.ac:
+            start_training_ac()
+        else:
+            start_training_dqn(args.per)
     elif args.mode == 'test':
         print('test')
         test_model(args.model)

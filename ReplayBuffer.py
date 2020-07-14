@@ -60,8 +60,8 @@ class PrioritizedReplay:
         dones = []
 
         # Calculate the importance sampling value
-        is_weight = np.power(len(self.experiences) * probabilities[ids], -self.beta)
-        is_weight /= is_weight.max()
+        importance_samplings = np.power(len(self.experiences) * probabilities[ids], -self.beta)
+        importance_samplings /= importance_samplings.max()
 
         # Build the data structures that have to be returned
         for idx in ids:
@@ -72,7 +72,7 @@ class PrioritizedReplay:
             dones.append(self.experiences[idx][4])
 
         return np.asarray(states), np.asarray(actions), np.asarray(rewards), np.asarray(states_next), np.asarray(
-            dones), ids, is_weight
+            dones), ids, importance_samplings
 
     # Method to update the priority of the samples after have been fed to the network
     def update_priority(self, ids, td_errors):
