@@ -7,7 +7,6 @@ from agents import DQNAgent, ActorCriticAgent
 
 hyperparams = {
     'gamma': 0.99,
-    'copy_step': 25,
     'max_experiences': 10000,
     'min_experiences': 1000,
     'batch_size': 32,
