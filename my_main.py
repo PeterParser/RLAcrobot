@@ -11,9 +11,13 @@ hyperparams = {
     'max_experiences': 10000,
     'min_experiences': 1000,
     'batch_size': 32,
-    'learning_rate': 1e-3,
+    'learning_rate_dqn': 1e-3,
+    'learning_rate_actor': 1e-3,
+    'learning_rate_critic': 1e-3,
     'environment': 'Acrobot-v1',
-    'network': [128],
+    'hidden_layer_dqn': [128],
+    'hidden_layer_actor': [128],
+    'hidden_layer_critic': [128],
     'episodes': 100,
     'epsilon': 0.99,
     'min_epsilon': 0.1,
@@ -28,7 +32,9 @@ def start_training_ac():
     log_name = 'final'
     log_dir = 'logs/acrobotAC/' + log_name
     log_writer = tf.summary.create_file_writer(log_dir)
-    agent = ActorCriticAgent(hyperparams['network'], state_spec, action_spec, hyperparams['learning_rate'])
+    agent = ActorCriticAgent(hyperparams['hidden_layer_actor'], hyperparams['hidden_layer_critic'], state_spec,
+                             action_spec, hyperparams['learning_rate_actor'], hyperparams['learning_rate_critic'])
+
     total_rewards = np.empty(hyperparams['episodes'])
     for episode in range(hyperparams['episodes']):
         episode_reward = 0
@@ -39,7 +45,7 @@ def start_training_ac():
             episode_reward += reward
             state = next_state
         total_rewards[episode] = episode_reward
-        avg_rewards = total_rewards[max(0, episode - 100):(episode + 1)].mean()
+        avg_rewards = total_rewards[max(0, episode - 20):(episode + 1)].mean()
         env.reset()
         with log_writer.as_default():
             tf.summary.scalar('episode reward', episode_reward, step=episode)
@@ -64,7 +70,7 @@ def start_training_dqn(is_prioritized):
     buffer = PrioritizedReplay(hyperparams['max_experiences']) if is_prioritized else UniformReplay(
         hyperparams['max_experiences'])
 
-    agent = DQNAgent(hyperparams['network'], state_spec, action_spec, buffer, hyperparams['learning_rate'],
+    agent = DQNAgent(hyperparams['hidden_layer_dqn'], state_spec, action_spec, buffer, hyperparams['learning_rate_dqn'],
                      is_prioritized)
 
     total_rewards = np.empty(hyperparams['episodes'])
@@ -82,12 +88,11 @@ def start_training_dqn(is_prioritized):
             buffer.add((state, action, reward, next_state, done))
             state = next_state
 
-            # Only if is DQN i need to wait with actor critic i will procede, put a switch
             if len(buffer.experiences) > hyperparams['min_experiences']:
                 agent.train(hyperparams['gamma'], hyperparams['batch_size'])
 
         total_rewards[episode] = episode_reward
-        avg_rewards = total_rewards[max(0, episode - 100):(episode + 1)].mean()
+        avg_rewards = total_rewards[max(0, episode - 20):(episode + 1)].mean()
 
         env.reset()
         if episode % 100 == 0:
@@ -107,7 +112,7 @@ def test_model(model):
     buffer = None
     is_prioritized = False
     is_double = False
-    # Create the network
+    # Create the agent
     agent = DQNAgent(hyperparams['network'], state_spec, action_spec, buffer, hyperparams['learning_rate'],
                      is_prioritized,
                      is_double)

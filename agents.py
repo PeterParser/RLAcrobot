@@ -54,7 +54,8 @@ class DQNAgent:
 
 class ActorCriticAgent:
 
-    def __init__(self, hidden_layers, state_spec, action_spec, learning_rate):
+    def __init__(self, hidden_layers_actor, hidden_layers_critic, state_spec, action_spec, learning_rate_actor,
+                 learning_rate_critic):
         self.actor_network = tf.keras.models.Sequential()
         self.critic_network = tf.keras.models.Sequential()
         # Input layers
@@ -63,20 +64,31 @@ class ActorCriticAgent:
         self.loss = tf.keras.losses.mean_squared_error
 
         # Hidden layers
-        for hidden_layer in hidden_layers:
+        for hidden_layer in hidden_layers_actor:
             self.actor_network.add(tf.keras.layers.Dense(hidden_layer, activation='relu'))
+        for hidden_layer in hidden_layers_critic:
             self.critic_network.add(tf.keras.layers.Dense(hidden_layer, activation='relu'))
 
         # Output layers
         self.actor_network.add(tf.keras.layers.Dense(action_spec, activation='softmax', dtype='float64'))
         self.critic_network.add(tf.keras.layers.Dense(1, activation='linear', dtype='float64'))
-        self.optimizer = tf.keras.optimizers.Adam(learning_rate)
+        self.optimizer_actor = tf.keras.optimizers.Adam(learning_rate_actor)
+        self.optimizer_critic = tf.keras.optimizers.Adam(learning_rate_critic)
+
+    def play_action(self, state):
+        probabilities = self.actor_network(np.atleast_2d(state))
+        selection_probabilities = probabilities[0] / np.sum(probabilities[0])
+        action = np.random.choice(self.actor_network.output_shape[1], p=selection_probabilities)
+        return action
 
     def play_and_train(self, state, env, gamma):
         # Batch size here is not used and is here for compatibility reasons
         with tf.GradientTape(persistent=True) as tape:
             probabilities = self.actor_network(np.atleast_2d(state))
             # i need to normalize probability because numpy wants that the sum must be 1
+
+            # Stop recording needed because predict method doesn't work inside gradient tape
+            # And for not taking the gradient of target in order to do a semigradient update
             with tape.stop_recording():
                 selection_probabilities = probabilities[0] / np.sum(probabilities[0])
                 action = np.random.choice(self.actor_network.output_shape[1], p=selection_probabilities)
@@ -89,7 +101,7 @@ class ActorCriticAgent:
 
         actor_gradient = tape.gradient(actor_loss, self.actor_network.trainable_weights)
         critic_gradient = tape.gradient(critic_loss, self.critic_network.trainable_weights)
-        self.optimizer.apply_gradients(zip(actor_gradient, self.actor_network.trainable_weights))
-        self.optimizer.apply_gradients(zip(critic_gradient, self.critic_network.trainable_weights))
+        self.optimizer_actor.apply_gradients(zip(actor_gradient, self.actor_network.trainable_weights))
+        self.optimizer_critic.apply_gradients(zip(critic_gradient, self.critic_network.trainable_weights))
 
         return next_state, reward, done
