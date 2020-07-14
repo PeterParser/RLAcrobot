@@ -34,6 +34,7 @@ class DQNAgent:
 
         target = rewards + (1 - dones) * gamma * np.max(self.training_network.predict(states_next), axis=1)
 
+        # Custom training loop taken by the teaching material on the course website
         mask = tf.one_hot(actions, self.training_network.output_shape[1])
         with tf.GradientTape() as tape:
             q_values = self.training_network(states)

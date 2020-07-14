@@ -45,12 +45,11 @@ class PrioritizedReplay:
 
     def sample(self, batch_size):
         # Updating beta value
-        self.beta = np.min([1., self.beta + self.beta_increment])
-
+        self.beta = min(1, self.beta + self.beta_increment)
         # Calculate the value of each element
         probabilities = np.asarray(list(map(lambda x: x[5] ** self.alpha, self.experiences)))
         # Normalize it in order to have probabilities
-        probabilities = probabilities / np.sum(probabilities)
+        probabilities /= np.sum(probabilities)
         # Pick batch_size indexes according to the given probability distribution
         ids = np.random.choice(len(self.experiences), batch_size, p=probabilities)
         states = []

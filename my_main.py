@@ -51,7 +51,7 @@ def start_training_ac():
         env.reset()
         with log_writer.as_default():
             tf.summary.scalar('episode reward', episode_reward, step=episode)
-            tf.summary.scalar('avg for 100 episodes', avg_rewards, step=episode)
+            tf.summary.scalar('avg for 20 episodes', avg_rewards, step=episode)
 
 
 def start_training_dqn(is_prioritized):
@@ -102,7 +102,7 @@ def start_training_dqn(is_prioritized):
 
         with log_writer.as_default():
             tf.summary.scalar('episode reward', episode_reward, step=episode)
-            tf.summary.scalar('avg for 100 episodes', avg_rewards, step=episode)
+            tf.summary.scalar('avg for 20 episodes', avg_rewards, step=episode)
 
     env.close()
 
