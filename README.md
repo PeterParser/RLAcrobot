@@ -7,7 +7,7 @@ Install the libraries
 pip3 install tensorflow --user 
 pip3 install gym --user
 ```
-N.B be sure that tensorflow version is at least 2.0
+be sure that tensorflow version is at least 2.0
 
 Download the repository:
 ```commandline
