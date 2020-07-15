@@ -121,7 +121,8 @@ def test_model(model, is_ac):
         agent.actor_network.load_weights(model)
 
     else:
-        agent = DQNAgent(hyperparams['hidden_layer_dqn'], state_spec, action_spec, buffer, hyperparams['learning_rate_dqn'],
+        agent = DQNAgent(hyperparams['hidden_layer_dqn'], state_spec, action_spec, buffer,
+                         hyperparams['learning_rate_dqn'],
                          is_prioritized)
 
         agent.network.load_weights(model)
@@ -134,7 +135,7 @@ def test_model(model, is_ac):
             if is_ac:
                 action = agent.play_action(obs)
             else:
-                action = agent.play_action(obs, 0.1)
+                action = agent.play_action(obs, hyperparams['min_epsilon'])
 
             obs, reward, done, _ = env.step(action)
             env.render()
