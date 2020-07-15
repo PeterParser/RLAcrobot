@@ -16,7 +16,7 @@ git clone https://github.com/PeterParser/RLAcrobot.git
 or download the zip from github and extract  it.
 
 
-# How to start it
+# Options
 
 If you want to train a simple DQN model just use "--train"
 ```commandline
