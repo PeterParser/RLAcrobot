@@ -57,6 +57,10 @@ class ActorCriticAgent:
 
     def __init__(self, hidden_layers_actor, hidden_layers_critic, state_spec, action_spec, learning_rate_actor,
                  learning_rate_critic):
+
+        # Needed because otherwise the sum of probabilites output from the softmax layer is not 1
+        # And random.choice doesn't work when the sum is not 1!
+        tf.keras.backend.set_floatx('float64')
         self.actor_network = tf.keras.models.Sequential()
         self.critic_network = tf.keras.models.Sequential()
 
@@ -71,8 +75,8 @@ class ActorCriticAgent:
             self.critic_network.add(tf.keras.layers.Dense(hidden_layer, activation='relu'))
 
         # Output layers
-        self.actor_network.add(tf.keras.layers.Dense(action_spec, activation='softmax', dtype='float64'))
-        self.critic_network.add(tf.keras.layers.Dense(1, activation='linear', dtype='float64'))
+        self.actor_network.add(tf.keras.layers.Dense(action_spec, activation='softmax'))
+        self.critic_network.add(tf.keras.layers.Dense(1, activation='linear'))
 
         self.optimizer_actor = tf.keras.optimizers.Adam(learning_rate_actor)
         self.optimizer_critic = tf.keras.optimizers.Adam(learning_rate_critic)
@@ -89,14 +93,11 @@ class ActorCriticAgent:
         # persistent needed because i will call tape.gradient 2 times one for the critic and one for the actor
         with tf.GradientTape(persistent=True) as tape:
             probabilities = self.actor_network(np.atleast_2d(state))
-            # I need to normalize probability because numpy wants that the sum must be 1 and the softmax gives me
-            # 0.99999999
 
             # Stop recording needed because predict method doesn't work inside gradient tape
             # And for not taking the gradient of target in order to do a semigradient update
             with tape.stop_recording():
-                selection_probabilities = probabilities[0] / np.sum(probabilities[0])
-                action = np.random.choice(self.actor_network.output_shape[1], p=selection_probabilities)
+                action = np.random.choice(self.actor_network.output_shape[1], p=probabilities[0])
                 next_state, reward, done, _ = env.step(action)
                 target = reward + (1 - done) * self.critic_network.predict(np.atleast_2d(next_state)) * gamma
 
