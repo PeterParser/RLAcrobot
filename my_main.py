@@ -24,11 +24,12 @@ hyperparams = {
 }
 
 
+# Training method for Actor critic
 def start_training_ac():
     env = gym.make(hyperparams['environment'])
     state_spec = len(env.observation_space.sample())
     action_spec = env.action_space.n
-    log_name = 'final'
+    log_name = 'final_build'
     log_dir = 'logs/acrobotAC/' + log_name
     log_writer = tf.summary.create_file_writer(log_dir)
 
@@ -49,21 +50,25 @@ def start_training_ac():
         total_rewards[episode] = episode_reward
         avg_rewards = total_rewards[max(0, episode - 20):(episode + 1)].mean()
         env.reset()
+
         with log_writer.as_default():
             tf.summary.scalar('episode reward', episode_reward, step=episode)
             tf.summary.scalar('avg for 20 episodes', avg_rewards, step=episode)
 
+    agent.actor_network.save_weights('actor_network.h5')
 
+
+# Training method for dqn
 def start_training_dqn(is_prioritized):
     if is_prioritized:
-        prio = "Prio"
+        prio = "with_priority"
     else:
-        prio = ""
+        prio = "no_priority"
 
     env = gym.make(hyperparams['environment'])
     state_spec = len(env.observation_space.sample())
     action_spec = env.action_space.n
-    log_name = 'final' + prio
+    log_name = 'final_build' + prio
     log_dir = 'logs/acrobot/' + log_name
 
     log_writer = tf.summary.create_file_writer(log_dir)
@@ -95,15 +100,12 @@ def start_training_dqn(is_prioritized):
 
         total_rewards[episode] = episode_reward
         avg_rewards = total_rewards[max(0, episode - 20):(episode + 1)].mean()
-
         env.reset()
-        if episode % 100 == 0:
-            print(avg_rewards)
 
         with log_writer.as_default():
             tf.summary.scalar('episode reward', episode_reward, step=episode)
             tf.summary.scalar('avg for 20 episodes', avg_rewards, step=episode)
-
+    agent.network.save_weights('dqn_{}_network.h5'.format(prio))
     env.close()
 
 
@@ -119,10 +121,10 @@ def test_model(model, is_ac):
         agent.actor_network.load_weights(model)
 
     else:
-        agent = DQNAgent(hyperparams['network'], state_spec, action_spec, buffer, hyperparams['learning_rate'],
+        agent = DQNAgent(hyperparams['hidden_layer_dqn'], state_spec, action_spec, buffer, hyperparams['learning_rate_dqn'],
                          is_prioritized)
 
-        agent.training_network.load_weights(model)
+        agent.network.load_weights(model)
     obs = env.reset()
     env.render()
     # Play 20 episodes
@@ -157,6 +159,7 @@ if __name__ == '__main__':
     if args.mode == 'train':
         print('TRAIN')
         print("PER", args.per)
+        print("Actor critic", args.ac)
         if args.ac:
             start_training_ac()
         else:

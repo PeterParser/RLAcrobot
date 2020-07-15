@@ -4,26 +4,26 @@ import numpy as np
 
 class DQNAgent:
 
-    def __init__(self, hidden_layers, state_spec, action_spec, buffer, learning_rate, is_prioritized, is_double):
+    def __init__(self, hidden_layers, state_spec, action_spec, buffer, learning_rate, is_prioritized):
         self.buffer = buffer
-        self.training_network = tf.keras.models.Sequential()
-        self.training_network.add(tf.keras.layers.InputLayer(input_shape=(state_spec,)))
+        self.network = tf.keras.models.Sequential()
+        self.network.add(tf.keras.layers.InputLayer(input_shape=(state_spec,)))
 
         for hidden_layer in hidden_layers:
-            self.training_network.add(tf.keras.layers.Dense(hidden_layer, activation='relu'))
+            self.network.add(tf.keras.layers.Dense(hidden_layer, activation='relu'))
 
-        self.training_network.add(tf.keras.layers.Dense(action_spec, activation='linear'))
+        self.network.add(tf.keras.layers.Dense(action_spec, activation='linear'))
 
         self.optimizer = tf.keras.optimizers.Adam(learning_rate)
         self.is_prioritized = is_prioritized
-        self.is_double = is_double
         self.loss = tf.keras.losses.mean_squared_error
 
+    # Epsilon-greedy policy
     def play_action(self, state, epsilon):
         if np.random.random() < epsilon:
-            return np.random.choice(self.training_network.output_shape[1])
+            return np.random.choice(self.network.output_shape[1])
         else:
-            return np.argmax(self.training_network.predict(np.atleast_2d(state))[0])
+            return np.argmax(self.network.predict(np.atleast_2d(state))[0])
 
     def train(self, gamma, batch_size):
         if self.is_prioritized:
@@ -32,12 +32,12 @@ class DQNAgent:
         else:
             states, actions, rewards, states_next, dones = self.buffer.sample(batch_size)
 
-        target = rewards + (1 - dones) * gamma * np.max(self.training_network.predict(states_next), axis=1)
+        target = rewards + (1 - dones) * gamma * np.max(self.network.predict(states_next), axis=1)
 
         # Custom training loop taken by the teaching material on the course website
-        mask = tf.one_hot(actions, self.training_network.output_shape[1])
+        mask = tf.one_hot(actions, self.network.output_shape[1])
         with tf.GradientTape() as tape:
-            q_values = self.training_network(states)
+            q_values = self.network(states)
             predicted = tf.reduce_sum(q_values * mask, axis=1)
 
             if self.is_prioritized:
@@ -48,7 +48,7 @@ class DQNAgent:
         if self.is_prioritized:
             self.buffer.update_priority(ids, (target - predicted))
 
-        variables = self.training_network.trainable_variables
+        variables = self.network.trainable_variables
         gradients = tape.gradient(loss, variables)
         self.optimizer.apply_gradients(zip(gradients, variables))
 
@@ -78,6 +78,7 @@ class ActorCriticAgent:
         self.optimizer_critic = tf.keras.optimizers.Adam(learning_rate_critic)
         self.loss = tf.keras.losses.mean_squared_error
 
+    # Playing action by following the policy (output of the actor network)
     def play_action(self, state):
         probabilities = self.actor_network(np.atleast_2d(state))
         selection_probabilities = probabilities[0] / np.sum(probabilities[0])
@@ -85,6 +86,7 @@ class ActorCriticAgent:
         return action
 
     def play_and_train(self, state, env, gamma):
+        # persistent needed because i will call tape.gradient 2 times one for the critic and one for the actor
         with tf.GradientTape(persistent=True) as tape:
             probabilities = self.actor_network(np.atleast_2d(state))
             # I need to normalize probability because numpy wants that the sum must be 1 and the softmax gives me
