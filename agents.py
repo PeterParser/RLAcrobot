@@ -84,8 +84,7 @@ class ActorCriticAgent:
     # Playing action by following the policy (output of the actor network)
     def play_action(self, state):
         probabilities = self.actor_network(np.atleast_2d(state))
-        selection_probabilities = probabilities[0] / np.sum(probabilities[0])
-        action = np.random.choice(self.actor_network.output_shape[1], p=selection_probabilities)
+        action = np.random.choice(self.actor_network.output_shape[1], p=probabilities[0])
         return action
 
     def play_and_train(self, state, env, gamma):

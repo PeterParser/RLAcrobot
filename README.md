@@ -20,23 +20,23 @@ or download the zip from github and extract  it.
 
 If you want to train a simple DQN model just use "--train"
 ```commandline
-python my_main.py --train
+python main.py --train
 ```
 
 to use Prioritized experience replay:
 ```commandline
-python my_main.py --train --per
+python main.py --train --per
 ```
 
 to use actor critic instead of dqn:
 ```commandline
-python my_main.py --train --ac
+python main.py --train --ac
 ```
 
 If you want to test a model:
 
 ```commandline
-python my_main.py --test --model model_file
+python main.py --test --model model_file
 ```
 
 
